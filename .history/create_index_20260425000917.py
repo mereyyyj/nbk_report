@@ -1,0 +1,36 @@
+import os
+import numpy as np
+import faiss
+from sentence_transformers import SentenceTransformer
+
+CHUNKS_PATH = "chunks"
+MODEL_NAME = "paraphrase-multilingual-MiniLM-L12-v2"
+
+def main():
+    print("Загрузка модели кодировщика...")
+    model = SentenceTransformer(MODEL_NAME)
+
+    texts = []
+    files = sorted(os.listdir(CHUNKS_PATH))
+    for file in files:
+        with open(os.path.join(CHUNKS_PATH, file), "r", encoding="utf-8") as f:
+            texts.append(f.read())
+
+    print(f"Кодирование {len(texts)} фрагментов...")
+    embeddings = model.encode(texts, show_progress_bar=True)
+    embeddings = np.array(embeddings).astype("float32")
+
+    index = faiss.IndexFlatL2(embeddings.shape[1])
+    index.add(embeddings)
+
+    faiss.write_index(index, "faiss_index.bin")
+
+    # Сохраняем тексты в одну строку для удобства чтения
+    with open("texts.txt", "w", encoding="utf-8") as f:
+        for text in texts:
+            f.write(text.replace("\n", " ") + "\n")
+
+    print("✅ Векторный индекс успешно создан!")
+
+if __name__ == "__main__":
+    main()
